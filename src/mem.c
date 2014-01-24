@@ -11,48 +11,55 @@
 
 /** squelette du TP allocateur memoire */
 
-void *zone_memoire = 0;
+void *mem = 0;
 
-/* ecrire votre code ici */
+struct cell {
+	unsigned long size;
+	struct cell* next;
+};
+typedef struct cell Cell;
 
-int 
-mem_init()
+Cell* tzl[BUDDY_MAX_INDEX];
+
+int mem_init()
 {
-  if (! zone_memoire)
-    zone_memoire = (void *) malloc(ALLOC_MEM_SIZE);
-  if (zone_memoire == 0)
-    {
-      perror("mem_init:");
-      return -1;
-    }
+	if (!mem) {
+		mem = (void *) malloc(ALLOC_MEM_SIZE);
+	}
 
-  /* ecrire votre code ici */
+	if (mem == 0) {
+		perror("mem_init:");
+		return -1;
+	}
 
-  return 0;
+	for (int i = 0; i < BUDDY_MAX_INDEX - 1; i++) {
+		tzl[i] = NULL;
+	}
+	*(Cell*)mem = (Cell){ ALLOC_MEM_SIZE - sizeof(Cell), NULL };
+	tzl[BUDDY_MAX_INDEX - 1] = mem;
+
+	return 0;
 }
 
-void *
-mem_alloc(unsigned long size)
+void * mem_alloc(unsigned long size)
 {
-  /*  ecrire votre code ici */
-  return 0;  
+	/*  ecrire votre code ici */
+	return 0;  
 }
 
-int 
-mem_free(void *ptr, unsigned long size)
+int mem_free(void *ptr, unsigned long size)
 {
-  /* ecrire votre code ici */
-  return 0;
+	/* ecrire votre code ici */
+	return 0;
 }
 
 
-int
-mem_destroy()
+int mem_destroy()
 {
-  /* ecrire votre code ici */
+	/* ecrire votre code ici */
 
-  free(zone_memoire);
-  zone_memoire = 0;
-  return 0;
+	free(mem);
+	mem = 0;
+	return 0;
 }
 
