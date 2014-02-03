@@ -220,12 +220,12 @@ int mem_free(void *ptr, unsigned long size)
 int mem_destroy()
 {
 	/**we free all the linked lists**/
-	for (int i = 0 ; i < BUDDY_MAX_INDEX ; i++) {
+/*	for (int i = 0 ; i < BUDDY_MAX_INDEX ; i++) {
 		if (tzl[i]!= NULL) {
 			free(tzl[i]);
 			tzl[i] = NULL;
 		}
-	}
+	}*/
 	free(mem);
 	mem = 0;
 	return 0;
