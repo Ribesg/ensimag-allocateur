@@ -22,6 +22,7 @@ typedef struct cell Cell;
 
 Cell* tzl[BUDDY_MAX_INDEX + 1];
 
+/**Function used only to avoid math.h log2**/
 int getIndexOf(unsigned long size) {
 	unsigned long mask = 1;
 	int i = 0;
@@ -32,6 +33,7 @@ int getIndexOf(unsigned long size) {
 	return i;
 }
 
+/**Function that adds a cell to a cell's linked list's end**/
 void add_last(Cell ** list, Cell * cell) {
 	if (*list == NULL) {
 		*list = cell;
@@ -40,6 +42,8 @@ void add_last(Cell ** list, Cell * cell) {
 	}
 }
 
+/**Function that remove a element from a linked list**/
+/**Note : the element is not freed, just removed **/
 void delete(Cell ** list, Cell* cell) {
 	if (*list != NULL) {
 		if (*list == cell) {
@@ -51,41 +55,9 @@ void delete(Cell ** list, Cell* cell) {
 	}
 }
 
-void append(Cell ** list, Cell * newCell) {
-	if (list == NULL ) list = &newCell;
-	else { 
-		if (*list  == NULL) {
-			*list = newCell;
-		} else {
-			Cell* current = *list;
-			while (current->next != NULL) {
-				current = current->next;
-			} 
-			current->next = newCell;
-		}  
-	}
-} 
-
-void delete_cell(Cell ** list, Cell * cellToDelete) {
-	if (list != NULL && *list != NULL) {
-		Cell * currentCell = *list;
-		if (currentCell == cellToDelete) {
-			if (currentCell->next == NULL) 
-				*list = NULL;
-			else {
-				list = &(currentCell->next);
-			}
-		} else {
-			while (currentCell->next != NULL && currentCell->next != cellToDelete) {
-				currentCell = currentCell->next;
-			}
-			if (currentCell->next == cellToDelete) {
-				currentCell->next = currentCell->next->next;
-			}
-		}            
-	} 
-}
-
+/**Function that splits a block in 2 recursively,**/
+/** as long as we didn't reach the requestedSize **/
+/**Note : splitted blocks are added to the TZL linked lists **/
 void* split_block(Cell * block, unsigned long requestedSize) {
 	if (block->size == 1) return (void *)NULL;
 	int index = getIndexOf(block->size);
@@ -94,14 +66,12 @@ void* split_block(Cell * block, unsigned long requestedSize) {
 	delete(list_block, block);
 
 	block->size = block->size / 2;
-//	append(&tzl[index - 1], block);
 	add_last(&tzl[index - 1], block);
 
-	size_t buddy =((size_t)block) + (size_t)(block->size);
+	//we calculate buddy's location
+	unsigned long buddy = ((unsigned long)block) + block->size;
 	*(Cell*)buddy = (Cell) { block->size, NULL };
-	// (Cell *) block + block->size + sizeof(Cell);
-	//	*buddy = 
-//	append(&tzl[index - 1], (Cell*)buddy);
+
 	add_last(&tzl[index - 1], (Cell*)buddy);
 
 	if (block->size == requestedSize) {
@@ -112,24 +82,24 @@ void* split_block(Cell * block, unsigned long requestedSize) {
 	}
 }
 
-//function that appends a new cell to a given list
-//used for TZL
-
-static void * find_free_block(int index, unsigned long requested_size) {
+/**Function that finds a free_block of the requestedSize**/
+/**Basically, it takes the first element of the TZL linked list if not null**/
+/**else, we split a higher free block if we can**/
+static void * find_free_block(int index, unsigned long requestedSize) {
 	if (tzl[index] != NULL) {
-		Cell * free_block = tzl[index];
-		if (free_block == NULL) {return NULL;}
+		Cell * freeBlock = tzl[index];
+		if (freeBlock == NULL) {return NULL;}
 		else {
-			if (free_block->size == requested_size) {
-				delete(&tzl[index], free_block);
-				return (void *) free_block;
+			if (freeBlock->size == requestedSize) {
+				delete(&tzl[index], freeBlock);
+				return (void *) freeBlock;
 			} else {
-				return split_block(free_block, requested_size); 
+				return split_block(freeBlock, requestedSize); 
 			}
 		}
 
 	} else if (index < BUDDY_MAX_INDEX) { 
-		return find_free_block(index + 1, requested_size);
+		return find_free_block(index + 1, requestedSize);
 		//find out what to do when it's not the right size;
 	} else {
 		return NULL;
@@ -150,8 +120,10 @@ int mem_init()
 	for (int i = 0; i <= BUDDY_MAX_INDEX ; i++) {
 		tzl[i] = NULL;
 	}
-	
-	*(Cell*)mem = (Cell){ ALLOC_MEM_SIZE, NULL };
+
+	Cell * cell = (Cell *) mem;
+	cell->size = ALLOC_MEM_SIZE;
+	cell->next = NULL;
 	tzl[BUDDY_MAX_INDEX] = mem;
 
 	return 0;
@@ -160,78 +132,102 @@ int mem_init()
 void * mem_alloc(unsigned long size)
 {
 	if (mem == 0) return NULL;
-	//step 1 : find a free bloc
-	//step 1.1 : find index in tzl
+	if (size == 0) return NULL;
 	if (size > ALLOC_MEM_SIZE) return 0; //size is too high
+	
 	int index = getIndexOf(size);
-	Cell* cell = find_free_block(index, size);
+
+	Cell* cell = find_free_block(index, size); //step 1 : find a free block
 	if (cell == NULL) {
 		return (void *)0; //we reached the end of TZL         
 	} else {
-		delete(&tzl[index], cell);
+		delete(&tzl[index], cell); //step 2 : block is allocated  
 		return (void *)cell;
 	}
 
-	printf("%d", index);    
-	/*  ecrire votre code ici */
+	printf("%d", index);
 	return 0;  
 }
 
+/**function that looks for a block's buddy **/
+/**note : if we find it, we remobe it from the TZL's linked list**/
 void * find_buddy(void * ptr, unsigned long size) {
 	int index = getIndexOf(size);
-	size_t buddy = (size_t)ptr ^ (size_t)size;
-	if (index <= BUDDY_MAX_INDEX) {
+
+	unsigned long buddy = (unsigned long)ptr ^ size; //buddy's location
+
+	if (index < BUDDY_MAX_INDEX) {
 		Cell * curr = tzl[index];
-		while (curr != NULL && ((size_t)curr != buddy))
+		
+		//checking if buddy's free 
+		while (curr != NULL && 
+				((unsigned long)curr != buddy))
 			curr = curr->next;
 		if (curr != NULL) {
 			delete(&tzl[index], curr);
 			return (void *) curr;
 		} else {
-			return NULL;
+			//problem with xor operation may make program unable 
+			//to find the right buddy address (for some odd reason)
+			buddy = (unsigned long) ptr + size;		
+			curr = tzl[index];
+			while (curr != NULL && 
+					((unsigned long)curr != buddy))
+				curr = curr->next;
+			if (curr != NULL) {
+				delete(&tzl[index], curr);
+				return (void *) curr;
+			} 
 		} 
-		return NULL;
-	} else {
-		return NULL;
 	}
+	return NULL;
 }
-
 
 int mem_free(void *ptr, unsigned long size)
 {
-	if (ptr == NULL) return 0;
+	/**guard check **/
+	if (ptr == NULL || (unsigned long)ptr == (unsigned long)-1) return -1;
+	if (size > ALLOC_MEM_SIZE || size == 0) return -1;
+	if (ptr > mem + ALLOC_MEM_SIZE || ptr < mem) return -1; 
+	
 	int index = getIndexOf(size);
 	Cell * buddy = (Cell *)find_buddy(ptr, size);
+	
+	//if buddy is null, then we write the block's cell
 	if (buddy == NULL) {
-		*((Cell*)ptr) = (Cell){size, NULL};
-		add_last(&tzl[index], ptr);
+		Cell* cell = (Cell*)((unsigned long)ptr);
+		cell->size = size;
+		cell->next = NULL;	
+		add_last(&tzl[index], cell);
+		return 0;
 	} else {
-		if (size < ALLOC_MEM_SIZE) {
-			mem_free(ptr, size * 2);
+		//else we merge them, and the new block is written
+		//at the smallest location between buddy and ptr's 
+		if ((unsigned long)buddy < (unsigned long)ptr) {
+			if (size < ALLOC_MEM_SIZE) {
+				return mem_free((void*)buddy, size * 2);
+			} else return -1;
+		} else if (size < ALLOC_MEM_SIZE) {
+			return mem_free(ptr, size * 2);
 		} else {
-			return 0;
+			return -1;
 		}
 	}
-	return 0;
+	return -1;
 }
 
 
 int mem_destroy()
 {
-	/* ecrire votre code ici */
-	for (int i = 0 ; i <= BUDDY_MAX_INDEX ; i++) {
-		free(tzl[i]);
+	/**we free all the linked lists**/
+	for (int i = 0 ; i < BUDDY_MAX_INDEX ; i++) {
+		if (tzl[i]!= NULL) {
+			free(tzl[i]);
+			tzl[i] = NULL;
+		}
 	}
 	free(mem);
 	mem = 0;
 	return 0;
 }
 
-/*
-   void is_free(void * zone) {
-   return *(zone + sizeof(Cell)) == NULL;
-   }
-
-   void is_buddy_free(void * zone) {
-   return *(zone * 2 + sizeof(Cell)) == NULL; 
-   }*/
