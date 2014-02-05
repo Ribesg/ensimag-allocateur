@@ -182,18 +182,6 @@ void * find_buddy(void * ptr, unsigned long size) {
 		if (curr != NULL) {
 			delete(&tzl[index], curr);
 			return (void *) curr;
-		} else {
-			//problem with xor operation may make program unable 
-			//to find the right buddy address (for some odd reason)
-			buddy = (unsigned long) ptr + size;		
-			curr = tzl[index];
-			while (curr != NULL && 
-					((unsigned long)curr != buddy))
-				curr = curr->next;
-			if (curr != NULL) {
-				delete(&tzl[index], curr);
-				return (void *) curr;
-			} 
 		} 
 	}
 	return NULL;
