@@ -35,6 +35,7 @@ int getIndexOf(unsigned long size) {
 
 /**Function that adds a cell to a cell's linked list's end**/
 void add_last(Cell ** list, Cell * cell) {
+	if (list == NULL) list = &cell;
 	if (*list == NULL) {
 		*list = cell;
 	} else {
@@ -133,6 +134,7 @@ void * mem_alloc(unsigned long size)
 {
 	if (mem == 0) return NULL;
 	if (size == 0) return NULL;
+	if (size < sizeof(Cell)) size = (unsigned long)sizeof(Cell);
 	if (size > ALLOC_MEM_SIZE) return 0; //size is too high
 	
 	int index = getIndexOf(size);
@@ -154,7 +156,7 @@ void * mem_alloc(unsigned long size)
 void * find_buddy(void * ptr, unsigned long size) {
 	int index = getIndexOf(size);
 
-	unsigned long buddy = (unsigned long)ptr ^ size; //buddy's location
+	unsigned long buddy = (((unsigned long)ptr - (unsigned long)mem) ^ size) + (unsigned long)mem; //buddy's location
 
 	if (index < BUDDY_MAX_INDEX) {
 		Cell * curr = tzl[index];
@@ -188,6 +190,7 @@ int mem_free(void *ptr, unsigned long size)
 	/**guard check **/
 	if (ptr == NULL || (unsigned long)ptr == (unsigned long)-1) return -1;
 	if (size > ALLOC_MEM_SIZE || size == 0) return -1;
+	if (size < sizeof(Cell)) size = (unsigned long) sizeof(Cell);
 	if (ptr > mem + ALLOC_MEM_SIZE || ptr < mem) return -1; 
 	
 	int index = getIndexOf(size);
