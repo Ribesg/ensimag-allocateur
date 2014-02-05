@@ -33,9 +33,19 @@ int getIndexOf(unsigned long size) {
 	return i;
 }
 
+unsigned long getConformSize(unsigned long x) {
+	x--;
+	x |= x >> 1;
+	x |= x >> 2;
+	x |= x >> 4;
+	x |= x >> 8;
+	x |= x >> 16;
+	x++;
+	return x;
+}
+
 /**Function that adds a cell to a cell's linked list's end**/
 void add_last(Cell ** list, Cell * cell) {
-	if (list == NULL) list = &cell;
 	if (*list == NULL) {
 		*list = cell;
 	} else {
@@ -135,6 +145,10 @@ void * mem_alloc(unsigned long size)
 	if (mem == 0) return NULL;
 	if (size == 0) return NULL;
 	if (size < sizeof(Cell)) size = (unsigned long)sizeof(Cell);
+	//if size isn't a power of 2
+	if ((size & (size - 1)) != 0) {
+		size = getConformSize(size);
+	}
 	if (size > ALLOC_MEM_SIZE) return 0; //size is too high
 	
 	int index = getIndexOf(size);
@@ -191,6 +205,10 @@ int mem_free(void *ptr, unsigned long size)
 	if (ptr == NULL || (unsigned long)ptr == (unsigned long)-1) return -1;
 	if (size > ALLOC_MEM_SIZE || size == 0) return -1;
 	if (size < sizeof(Cell)) size = (unsigned long) sizeof(Cell);
+	//if size isn't a power of 2
+	if ((size & (size - 1)) != 0) {
+		size = getConformSize(size);
+	}
 	if (ptr > mem + ALLOC_MEM_SIZE || ptr < mem) return -1; 
 	
 	int index = getIndexOf(size);
@@ -223,12 +241,9 @@ int mem_free(void *ptr, unsigned long size)
 int mem_destroy()
 {
 	/**we free all the linked lists**/
-/*	for (int i = 0 ; i < BUDDY_MAX_INDEX ; i++) {
-		if (tzl[i]!= NULL) {
-			free(tzl[i]);
+	for (int i = 0 ; i <= BUDDY_MAX_INDEX ; i++) {
 			tzl[i] = NULL;
-		}
-	}*/
+	}
 	free(mem);
 	mem = 0;
 	return 0;
